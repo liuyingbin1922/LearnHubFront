@@ -1,15 +1,3 @@
-export type AuthUser = {
-  id?: string;
-  phone?: string;
-  nickname?: string;
-};
-
-export type AuthTokenResponse = {
-  access_token: string;
-  refresh_token?: string;
-  user?: AuthUser;
-};
-
 export type Collection = {
   id: string;
   name: string;
@@ -31,10 +19,4 @@ export type Job = {
   status: "pending" | "running" | "success" | "failed";
   progress?: number;
   result?: Record<string, unknown>;
-};
-
-export type WorkflowRun = {
-  id: string;
-  status: "pending" | "running" | "success" | "failed";
-  created_at?: string;
 };

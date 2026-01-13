@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function TagInput({ value = [], onChange }: { value?: string[]; onChange?: (tags: string[]) => void }) {
   const [input, setInput] = useState("");
-  const t = useTranslations("common");
 
   const addTag = () => {
     const trimmed = input.trim();
@@ -38,7 +36,7 @@ export function TagInput({ value = [], onChange }: { value?: string[]; onChange?
         <Input
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder={t("tagPlaceholder")}
+          placeholder="输入标签，按回车添加"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
@@ -47,7 +45,7 @@ export function TagInput({ value = [], onChange }: { value?: string[]; onChange?
           }}
         />
         <Button type="button" variant="secondary" onClick={addTag}>
-          {t("tagAdd")}
+          添加
         </Button>
       </div>
     </div>

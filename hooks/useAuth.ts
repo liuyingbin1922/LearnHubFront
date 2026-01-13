@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { clearToken, getToken } from "@/lib/auth";
-import type { AuthUser } from "@/types/api";
+
+export type AuthUser = {
+  id?: string;
+  phone?: string;
+  nickname?: string;
+};
 
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -12,7 +17,7 @@ export function useAuth() {
     const token = getToken();
     setIsAuthed(Boolean(token));
     if (token) {
-      setUser(null);
+      setUser({ phone: "已登录用户" });
     }
   }, []);
 
