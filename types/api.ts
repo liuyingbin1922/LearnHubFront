@@ -7,16 +7,28 @@ export type Collection = {
 
 export type Problem = {
   id: string;
-  ocr_text?: string;
   status?: string;
-  tags?: string[];
-  thumbnail_url?: string;
+  original_image_url?: string;
+  cropped_image_url?: string | null;
+  ocr_text?: string | null;
+  note?: string | null;
+  tags?: unknown;
+  order_index?: number;
+  collection_id?: string | null;
+  version?: number;
   updated_at?: string;
 };
 
 export type Job = {
   id: string;
-  status: "pending" | "running" | "success" | "failed";
-  progress?: number;
-  result?: Record<string, unknown>;
+  status: string;
+  result?: Record<string, unknown> | null;
+  error_message?: string | null;
+};
+
+export type ApiEnvelope<T> = {
+  code: number;
+  message: string;
+  data: T;
+  request_id?: string;
 };

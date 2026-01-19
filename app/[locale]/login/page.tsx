@@ -13,9 +13,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { setToken } from "@/lib/auth";
-import { API_BASE_URL, AUTH_MODE, GOOGLE_CLIENT_ID } from "@/lib/config";
+import { API_BASE_URL } from "@/lib/config";
 import { defaultLocale, isLocale } from "@/lib/i18n";
 import { resolveRegion, setStoredRegion, type Region } from "@/lib/region";
+import { supabase } from "@/lib/supabase/client";
 import type { AuthTokenResponse } from "@/types/api";
 
 const formSchema = z.object({
@@ -24,19 +25,6 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-declare global {
-  interface Window {
-    google?: {
-      accounts?: {
-        id?: {
-          initialize: (config: { client_id: string; callback: (response: { credential: string }) => void }) => void;
-          renderButton: (element: HTMLElement, options: { theme: string; size: string; text: string }) => void;
-        };
-      };
-    };
-  }
-}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,8 +36,6 @@ export default function LoginPage() {
   const commonT = useTranslations("common");
   const [countdown, setCountdown] = useState(0);
   const [region, setRegion] = useState<Region>(() => resolveRegion({ locale, regionParam: searchParams.get("region") }));
-  const [googleReady, setGoogleReady] = useState(false);
-  const [googleError, setGoogleError] = useState<string | null>(null);
   const nextParam = useMemo(() => searchParams.get("next"), [searchParams]);
   const redirectTarget = nextParam || `/${locale}/collections`;
 
@@ -78,58 +64,6 @@ export default function LoginPage() {
     setStoredRegion(region);
   }, [region, t]);
 
-  useEffect(() => {
-    if (region !== "global") return;
-    if (!GOOGLE_CLIENT_ID || AUTH_MODE === "redirect") return;
-
-    const scriptId = "google-identity";
-    if (document.getElementById(scriptId)) {
-      setGoogleReady(true);
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.id = scriptId;
-    script.onload = () => setGoogleReady(true);
-    script.onerror = () => setGoogleError(t("auth.googleLoadError"));
-    document.body.appendChild(script);
-  }, [region]);
-
-  useEffect(() => {
-    if (!googleReady || !GOOGLE_CLIENT_ID || AUTH_MODE === "redirect") return;
-    if (!window.google?.accounts?.id) return;
-
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: async ({ credential }) => {
-        const { data } = await apiFetch<AuthTokenResponse>("/api/v1/auth/google/verify", {
-          method: "POST",
-          body: { id_token: credential },
-          fallbackErrorMessage: commonT("requestFailed"),
-          networkErrorMessage: commonT("networkError"),
-          missingApiMessage: commonT("missingApi")
-        });
-        if (data?.access_token) {
-          setToken(data.access_token);
-          router.push(redirectTarget);
-        }
-      }
-    });
-
-    const buttonContainer = document.getElementById("google-button");
-    if (buttonContainer) {
-      buttonContainer.innerHTML = "";
-      window.google.accounts.id.renderButton(buttonContainer, {
-        theme: "outline",
-        size: "large",
-        text: "continue_with"
-      });
-    }
-  }, [googleReady, redirectTarget, router]);
-
   const onSubmit = async (values: FormValues) => {
     const { data } = await apiFetch<AuthTokenResponse>("/api/v1/auth/sms/verify", {
       method: "POST",
@@ -155,12 +89,20 @@ export default function LoginPage() {
     setCountdown(60);
   };
 
-  const onGoogleRedirect = () => {
-    if (!API_BASE_URL) {
-      toast.error(commonT("missingApi"));
-      return;
+  const onGoogleLogin = async () => {
+    const callbackUrl = new URL(`/${locale}/auth/callback`, window.location.origin);
+    if (nextParam) {
+      callbackUrl.searchParams.set("next", nextParam);
     }
-    window.location.href = `${API_BASE_URL}/api/v1/auth/google/authorize`;
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: callbackUrl.toString() }
+    });
+
+    if (error) {
+      toast.error(t("auth.googleLoadError"));
+    }
   };
 
   return (
@@ -206,17 +148,10 @@ export default function LoginPage() {
 
           {region === "global" ? (
             <div className="mt-6 space-y-4">
-              {AUTH_MODE === "redirect" ? (
-                <Button className="w-full" onClick={onGoogleRedirect}>
-                  <Globe className="mr-2 h-4 w-4" />
-                  {t("auth.googleCta")}
-                </Button>
-              ) : (
-                <div className="space-y-3">
-                  <div id="google-button" className="w-full" />
-                  {googleError ? <p className="text-xs text-red-500">{googleError}</p> : null}
-                </div>
-              )}
+              <Button className="w-full" onClick={onGoogleLogin}>
+                <Globe className="mr-2 h-4 w-4" />
+                {t("auth.googleCta")}
+              </Button>
               <details className="rounded-xl border border-slate-200 bg-white px-4 py-3">
                 <summary className="cursor-pointer text-sm text-slate-600">{t("auth.otherMethods")}</summary>
                 <div className="mt-4">

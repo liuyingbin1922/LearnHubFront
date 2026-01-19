@@ -5,11 +5,13 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { setToken } from "@/lib/auth";
+import { supabase } from "@/lib/supabase/client";
 
 const formSchema = z.object({
   phone: z.string().min(11, "请输入手机号"),
@@ -61,6 +63,17 @@ export default function LoginPage() {
     }
   };
 
+  const onGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` }
+    });
+
+    if (error) {
+      toast.error("Google 登录失败，请稍后再试");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="mx-auto grid w-full max-w-5xl gap-8 lg:grid-cols-2">
@@ -102,19 +115,22 @@ export default function LoginPage() {
               </div>
               {errors.code ? <p className="text-xs text-red-500">{errors.code.message}</p> : null}
             </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "登录中..." : "登录"}
-            </Button>
-          </form>
-          <div className="my-6 flex items-center gap-3 text-xs text-slate-400">
-            <span className="h-px flex-1 bg-slate-200" />
-            或者
-            <span className="h-px flex-1 bg-slate-200" />
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "登录中..." : "登录"}
+          </Button>
+        </form>
+        <div className="my-6 flex items-center gap-3 text-xs text-slate-400">
+          <span className="h-px flex-1 bg-slate-200" />
+          或者
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+        <Button type="button" className="w-full" onClick={onGoogleLogin}>
+          Google 登录
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
             onClick={() => {
               window.location.href = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/wechat/web/authorize`;
             }}

@@ -1,26 +1,32 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { apiFetch } from "@/lib/api";
-import { setToken } from "@/lib/auth";
+import { supabase } from "@/lib/supabase/client";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
   const params = useSearchParams();
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const code = params.get("code");
-    if (!code) return;
+    const next = params.get("next");
 
     const run = async () => {
-      const { data } = await apiFetch<{ token: string }>("/api/v1/auth/exchange", {
-        method: "POST",
-        body: { code }
-      });
-      if (data?.token) {
-        setToken(data.token);
-        router.replace("/collections");
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          setError(true);
+          return;
+        }
+      }
+
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        router.replace(next || "/collections");
+      } else {
+        setError(true);
       }
     };
 
@@ -30,7 +36,7 @@ export default function AuthCallbackPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="rounded-2xl border border-slate-200 bg-white px-8 py-6 text-sm text-slate-600 shadow-soft">
-        正在完成微信登录，请稍候...
+        {error ? "登录失败，请重试" : "正在完成 Google 登录，请稍候..."}
       </div>
     </div>
   );
